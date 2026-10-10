@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+
+  /* Terracotta accent */
+  --color-brand-50: #fdf4ef;
+  --color-brand-100: #fae5da;
+  --color-brand-200: #f4c8b3;
+  --color-brand-500: #d56a46;
+  --color-brand-600: #bf5232;
+  --color-brand-700: #9f4026;
+  --color-brand-900: #5a2413;
+
+  --color-gold-400: #d4b062;
+  --color-gold-500: #b8923f;
+
+  /* Warm neutrals (stone) replace the default cool slate */
+  --color-slate-50: #faf8f5;
+  --color-slate-100: #f4f0ea;
+  --color-slate-200: #e8e2d9;
+  --color-slate-300: #d5cdc1;
+  --color-slate-400: #a39a8d;
+  --color-slate-500: #7a7266;
+  --color-slate-600: #5b544a;
+  --color-slate-700: #433d35;
+  --color-slate-800: #2c2721;
+  --color-slate-900: #1c1814;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-slate-50 font-sans text-slate-800;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+  .arch {
+    border-radius: 999px 999px 1.25rem 1.25rem;
+  }
+}
