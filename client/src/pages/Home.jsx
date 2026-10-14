@@ -30,6 +30,9 @@ const STEPS = [
 ];
 
 
+// Phones/tablets get the calm version: no per-frame scroll effects (they stutter on touch scrolling).
+const isSmallScreen = () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px), (pointer: coarse)").matches;
+
 /** Lusion-style cyan ribbon that draws itself as its section scrolls through the viewport. */
 function ScrollRibbon({ d, viewBox, width = 56, className = "", from = 0.15, span = 0.9, page = false }) {
   const wrap = useRef(null);
@@ -37,6 +40,7 @@ function ScrollRibbon({ d, viewBox, width = 56, className = "", from = 0.15, spa
   const id = useRef("rb" + Math.random().toString(36).slice(2, 8)).current;
 
   useEffect(() => {
+    if (isSmallScreen()) return;
     // Page mode: sample the path once so the drawn head can follow the viewport's bottom edge.
     const vbH = Number(viewBox.split(" ")[3]);
     const samples = [];
@@ -92,7 +96,7 @@ function ScrollRibbon({ d, viewBox, width = 56, className = "", from = 0.15, spa
   }, [from, span, page, viewBox]);
 
   return (
-    <div ref={wrap} aria-hidden className={`pointer-events-none absolute inset-0 -z-10 overflow-hidden ${className}`}>
+    <div ref={wrap} aria-hidden className={`pointer-events-none absolute inset-0 -z-10 hidden overflow-hidden md:block ${className}`}>
       <svg className="h-full w-full" viewBox={viewBox} preserveAspectRatio="none" fill="none">
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
@@ -135,6 +139,10 @@ function ReelPanel() {
     let raf = 0;
     let last = performance.now();
     const ease = (t) => t * t * t * (t * (t * 6 - 15) + 10); // smootherstep
+    if (isSmallScreen()) {
+      panel.current?.style.setProperty("--p", "1");
+      return;
+    }
 
     const tick = (now = performance.now()) => {
       const dt = Math.min(0.05, (now - last) / 1000); // frame-rate independent damping
@@ -161,7 +169,7 @@ function ReelPanel() {
 
   const letters = (word, base) =>
     word.split("").map((ch, i) => {
-      const k = `clamp(0, (var(--p) - ${(0.62 + (base + i) * 0.018).toFixed(3)}) * 6, 1)`;
+      const k = `clamp(0, (var(--p) - ${(0.62 + (base + i) * 0.018).toFixed(3)}) * 8, 1)`;
       return (
         <span
           key={i}
@@ -185,10 +193,10 @@ function ReelPanel() {
       <Link to="/providers" aria-label="Explore all services" className="group my-3 block">
         <div
           ref={panel}
-          className="relative isolate overflow-hidden rounded-[1.6rem] bg-[#e5001c] shadow-2xl shadow-red-900/20"
-          style={{ aspectRatio: "16 / 7", minHeight: 240, willChange: "transform", transformOrigin: "50% 50%", transition: "none" }}
+          className="relative isolate overflow-hidden rounded-[1.6rem] bg-[#e5001c] shadow-2xl shadow-red-900/20 [--reel-ratio:4/3] sm:[--reel-ratio:16/7]"
+          style={{ aspectRatio: "var(--reel-ratio)", minHeight: 240, willChange: "transform", transformOrigin: "50% 50%", transition: "none" }}
         >
-          <div className="absolute inset-0 flex items-center justify-center gap-[7%] px-[8%] py-[4%]">
+          <div className="absolute inset-0 hidden items-center justify-center gap-[7%] px-[8%] py-[4%] sm:flex">
             {REEL_PHONES.map((ph, i) => (
               <div
                 key={ph.label}
@@ -204,12 +212,12 @@ function ReelPanel() {
             ))}
           </div>
 
-          <div className="absolute inset-0 flex items-center justify-center gap-4 px-4 font-display text-[clamp(1.3rem,3.6vw,3.4rem)] font-medium leading-none tracking-wide text-white sm:gap-8">
-            <span className="flex w-[36%] justify-end overflow-hidden">{letters("EXPLORE", 0)}</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 px-4 font-display text-[2.6rem] font-medium leading-none tracking-wide text-white sm:flex-row sm:gap-8 sm:text-[clamp(1.3rem,3.6vw,3.4rem)]">
+            <span className="flex justify-center overflow-hidden sm:w-[36%] sm:justify-end">{letters("EXPLORE", 0)}</span>
             <span className="grid h-12 w-20 shrink-0 place-items-center rounded-full bg-white text-slate-950 shadow-lg transition-transform duration-500 group-hover:scale-110 sm:h-16 sm:w-28">
               <svg viewBox="0 0 24 24" className="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor" aria-hidden><path d="M7 4.5v15l13-7.5z" /></svg>
             </span>
-            <span className="flex w-[36%] justify-start overflow-hidden">{letters("SERVICES", 7)}</span>
+            <span className="flex justify-center overflow-hidden sm:w-[36%] sm:justify-start">{letters("SERVICES", 7)}</span>
           </div>
         </div>
       </Link>
@@ -238,6 +246,7 @@ export default function Home() {
 
   // Cards skew and blur with scroll speed, then settle: the Lusion "featured work" feel.
   useEffect(() => {
+    if (isSmallScreen()) return;
     let last = window.scrollY;
     let v = 0;
     let raf = 0;
@@ -283,7 +292,7 @@ export default function Home() {
           <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <SplitText
               text="Where Great Events Become Reality."
-              className="max-w-[15ch] font-display text-[clamp(2.8rem,6vw,5.5rem)] font-extrabold tracking-tight text-slate-950 leading-[0.98]"
+              className="max-w-[15ch] font-display text-[clamp(2.5rem,6vw,5.5rem)] font-extrabold tracking-tight text-slate-950 leading-[0.98]"
             />
             <div className="max-w-md animate-fade-up pb-3 [animation-delay:700ms]">
               <p className="text-sm sm:text-base leading-relaxed text-slate-700 font-sans">

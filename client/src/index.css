@@ -168,6 +168,9 @@
   filter: blur(var(--bl, 0px));
   will-change: transform, filter;
 }
+@media (max-width: 767px), (pointer: coarse) {
+  .lusion-grid > * > * { transform: none; filter: none; will-change: auto; }
+}
 @supports (animation-timeline: view()) {
   @keyframes lusion-warp-in {
     from { opacity: 0; rotate: 1 0 0 16deg; scale: 0.9; translate: 0 70px; }

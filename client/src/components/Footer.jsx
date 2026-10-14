@@ -21,7 +21,7 @@ export default function Footer() {
           </nav>
         </div>
 
-        <p className="mt-20 select-none font-display text-[clamp(2.4rem,10vw,9rem)] font-bold uppercase leading-[0.8] tracking-tighter text-white/[0.07]">
+        <p className="mt-20 select-none overflow-hidden whitespace-nowrap font-display text-[clamp(1.6rem,8.4vw,9rem)] font-bold uppercase leading-[0.8] tracking-tighter text-white/[0.07]">
           DemandConnect
         </p>
         <div className="mt-8 flex flex-wrap justify-between gap-2 border-t border-white/10 pt-6 text-xs text-white/40">
