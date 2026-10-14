@@ -13,7 +13,7 @@ const app = express();
 
 app.disable("x-powered-by");
 // CSP off: the built web app loads Google Fonts, remote photos and map tiles
-app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: "cross-origin" } })); // uploads are shown on the web app origin
+app.use(helmet({ contentSecurityPolicy: false, referrerPolicy: { policy: "strict-origin-when-cross-origin" }, crossOriginResourcePolicy: { policy: "cross-origin" } })); // uploads are shown on the web app origin
 app.use(cors({ origin: env.CLIENT_URL.split(",").map((s) => s.trim()) }));
 app.use(express.json({ limit: "100kb" }));
 if (env.NODE_ENV === "development") app.use(morgan("dev"));

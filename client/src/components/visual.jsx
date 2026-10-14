@@ -115,9 +115,10 @@ export function MapView({ providers }) {
   useEffect(() => {
     if (!el.current || mapRef.current) return;
     mapRef.current = L.map(el.current, { scrollWheelZoom: false }).setView([17.4, 78.5], 6);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors",
-      maxZoom: 18,
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      attribution: "© OpenStreetMap contributors © CARTO",
+      subdomains: "abcd",
+      maxZoom: 19,
     }).addTo(mapRef.current);
     layer.current = L.layerGroup().addTo(mapRef.current);
     return () => {
