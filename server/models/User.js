@@ -18,6 +18,7 @@ const userSchema = new mongoose.Schema(
     passwordHash: { type: String, required: true, select: false },
     role: { type: String, enum: ROLES, default: "CUSTOMER", index: true },
     isActive: { type: Boolean, default: true },
+    savedProviders: [{ type: mongoose.Schema.Types.ObjectId, ref: "ProviderProfile" }],
   },
   { timestamps: true }
 );

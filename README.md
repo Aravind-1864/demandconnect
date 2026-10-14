@@ -11,6 +11,20 @@ A requirement-based marketplace for local event services. Customers post what th
 
 ---
 
+## Features
+
+**Discovery & planning** — Manual and AI modes · availability-aware search (pick a date, see only free providers) · grid and map views · side-by-side compare (up to 3) · saved providers with shareable shortlists · AI requirement extraction with voice input · AI vendor bundles (best match / best value / top rated) · per-event planner with countdown, checklist and budget split.
+
+**Marketplace** — proposals with inclusions/exclusions · atomic accept → booking · booking lifecycle · reviews with photos and provider replies · proposal templates for providers.
+
+**Communication** — real-time chat (Socket.io) with typing indicators and read receipts · live notification bell and toasts for proposals, invitations, bookings and reviews.
+
+**Provider tools** — earnings chart, pipeline and acceptance rate · calendar of jobs and blocked dates · response-time badge · drag-and-drop image upload · verification submission.
+
+**Admin** — platform analytics, verification queue, user/provider/category management.
+
+**Polish** — Fraunces + Manrope typography, dark mode, scroll-reveal and page transitions, skeleton loaders, animated match rings, confetti on bookings.
+
 ## Quick start
 
 Requirements: Node.js 18+, a MongoDB database (local or [Atlas](https://www.mongodb.com/atlas)).
@@ -146,4 +160,4 @@ The first run downloads an in-memory MongoDB binary.
 
 ## Roadmap
 
-Real-time chat (`Message` model is in place), Cloudinary image uploads for portfolios, email/in-app notifications, booking-date calendar view for providers.
+Payments (Razorpay/Stripe test mode), email notifications, cloud image storage (uploads currently use the server disk), and AI follow-up questions when details are missing.

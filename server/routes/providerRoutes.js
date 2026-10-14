@@ -9,7 +9,11 @@ const v = require("../validators");
 router.get("/", validate({ query: v.providerQuery }), c.search);
 
 // Static paths must be declared before "/:id".
+router.get("/batch", validate({ query: v.batchQuery }), c.batch);
 router.get("/me", protect, authorize("PROVIDER"), c.getMine);
+router.get("/me/stats", protect, authorize("PROVIDER"), c.stats);
+router.get("/me/calendar", protect, authorize("PROVIDER"), c.calendar);
+router.post("/verification", protect, authorize("PROVIDER"), validate({ body: v.verificationSubmit }), c.submitVerification);
 router.post("/profile", protect, authorize("PROVIDER"), validate({ body: v.providerProfileCreate }), c.createProfile);
 router.patch("/profile", protect, authorize("PROVIDER"), validate({ body: v.providerProfileUpdate }), c.updateProfile);
 

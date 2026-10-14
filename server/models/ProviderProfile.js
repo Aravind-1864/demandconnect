@@ -27,6 +27,23 @@ const providerProfileSchema = new mongoose.Schema(
     ratingAverage: { type: Number, default: 0, min: 0, max: 5 },
     ratingCount: { type: Number, default: 0, min: 0 },
     verified: { type: Boolean, default: false },
+    verification: {
+      status: { type: String, enum: ["NONE", "PENDING", "APPROVED", "REJECTED"], default: "NONE" },
+      documentUrl: { type: String, default: "" },
+      submittedAt: Date,
+    },
+    // Saved proposal presets so providers can reply to requests quickly.
+    proposalTemplates: {
+      type: [
+        {
+          name: { type: String, trim: true, maxlength: 60, required: true },
+          includedServices: [{ type: String, trim: true, maxlength: 120 }],
+          exclusions: [{ type: String, trim: true, maxlength: 120 }],
+          message: { type: String, trim: true, maxlength: 1500, default: "" },
+        },
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );

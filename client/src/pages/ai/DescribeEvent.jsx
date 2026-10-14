@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { errorMessage, unwrap } from "../../services/api";
 import { IMG } from "../../utils/images";
@@ -14,6 +14,35 @@ export default function DescribeEvent() {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [listening, setListening] = useState(false);
+  const recognition = useRef(null);
+  const SpeechRecognition = typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
+
+  useEffect(() => {
+    return () => recognition.current?.stop();
+  }, []);
+
+  const toggleVoice = () => {
+    if (listening) return recognition.current?.stop();
+    const rec = new SpeechRecognition();
+    rec.lang = "en-IN";
+    rec.interimResults = true;
+    rec.continuous = true;
+    const base = text ? text.trimEnd() + " " : "";
+    rec.onresult = (e) => {
+      const spoken = [...e.results].map((r) => r[0].transcript).join(" ");
+      setText((base + spoken).slice(0, 2000));
+    };
+    rec.onerror = (e) => {
+      setListening(false);
+      setError(e.error === "not-allowed" ? "Microphone access was blocked. Allow it in your browser to dictate." : "Voice input stopped. Please try again.");
+    };
+    rec.onend = () => setListening(false);
+    recognition.current = rec;
+    setError("");
+    setListening(true);
+    rec.start();
+  };
 
   const analyze = async (e) => {
     e.preventDefault();
@@ -50,7 +79,22 @@ export default function DescribeEvent() {
             aria-label="Event description"
           />
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400">{text.length}/2000</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-slate-400">{text.length}/2000</span>
+              {SpeechRecognition && (
+                <button
+                  type="button"
+                  onClick={toggleVoice}
+                  aria-pressed={listening}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+                    listening ? "border-red-300 bg-red-50 text-red-600" : "border-slate-300 text-slate-600 hover:border-brand-200"
+                  }`}
+                >
+                  <span className={listening ? "animate-pulse" : ""}>🎙️</span>
+                  {listening ? "Listening… tap to stop" : "Speak instead"}
+                </button>
+              )}
+            </div>
             <Button type="submit" loading={loading}>
               {loading ? "Analyzing…" : "Analyze requirements"}
             </Button>

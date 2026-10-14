@@ -1,59 +1,240 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @theme {
-  --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-  /* Terracotta accent */
-  --color-brand-50: #fdf4ef;
-  --color-brand-100: #fae5da;
-  --color-brand-200: #f4c8b3;
-  --color-brand-500: #d56a46;
-  --color-brand-600: #bf5232;
-  --color-brand-700: #9f4026;
-  --color-brand-900: #5a2413;
+  /* Violet accent on a cool lavender canvas */
+  --color-brand-50: #f1efff;
+  --color-brand-100: #e5e1ff;
+  --color-brand-200: #cbc4ff;
+  --color-brand-500: #7468f0;
+  --color-brand-600: #5b4fe3;
+  --color-brand-700: #4a3fc9;
+  --color-brand-900: #241d6b;
 
-  --color-gold-400: #d4b062;
-  --color-gold-500: #b8923f;
+  /* Neutrals: lavender-tinted. Dark mode re-maps this scale (see html.dark). */
+  --color-slate-50: #f2f1fb;
+  --color-slate-100: #eae9f6;
+  --color-slate-200: #dcdaee;
+  --color-slate-300: #c6c4de;
+  --color-slate-400: #9591b5;
+  --color-slate-500: #6f6b92;
+  --color-slate-600: #4f4c72;
+  --color-slate-700: #36345a;
+  --color-slate-800: #222042;
+  --color-slate-900: #14142b;
 
-  /* Warm neutrals (stone) replace the default cool slate */
-  --color-slate-50: #faf8f5;
-  --color-slate-100: #f4f0ea;
-  --color-slate-200: #e8e2d9;
-  --color-slate-300: #d5cdc1;
-  --color-slate-400: #a39a8d;
-  --color-slate-500: #7a7266;
-  --color-slate-600: #5b544a;
-  --color-slate-700: #433d35;
-  --color-slate-800: #2c2721;
-  --color-slate-900: #1c1814;
+  --animate-fade-up: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-in: fade-in 0.5s ease-out both;
+  --animate-pop: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-slide-down: slide-down 0.2s ease-out both;
+  --animate-marquee: marquee 38s linear infinite;
 }
 
+:root {
+  --ink: #14142b;
+  --ink-contrast: #ffffff;
+}
+
+@keyframes fade-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+@keyframes slide-down { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes heart { 0% { transform: scale(1); } 30% { transform: scale(1.35); } 60% { transform: scale(0.9); } 100% { transform: scale(1); } }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes word-up { from { transform: translateY(110%); } to { transform: translateY(0); } }
+@keyframes menu-in { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+@keyframes overlay-in { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+
+/* Base application styling */
 @layer base {
-  html {
-    -webkit-font-smoothing: antialiased;
-    scroll-behavior: smooth;
-  }
-  body {
-    @apply bg-slate-50 font-sans text-slate-800;
-  }
-  h1,
-  h2,
-  h3 {
+  html { -webkit-font-smoothing: antialiased; }
+  html.lenis, html.lenis body { height: auto; }
+  .lenis.lenis-smooth { scroll-behavior: auto !important; }
+  .lenis.lenis-stopped { overflow: hidden; }
+  body { @apply bg-slate-50 font-sans text-slate-800; }
+  h1, h2, h3 {
     font-family: var(--font-display);
-    font-optical-sizing: auto;
-    letter-spacing: -0.015em;
+    letter-spacing: -0.025em;
+    font-weight: 700;
   }
-  :focus-visible {
-    @apply outline-2 outline-offset-2 outline-brand-600;
-  }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-brand-600; }
+  button:not(:disabled) { cursor: pointer; }
 }
 
 @layer utilities {
-  .font-display {
-    font-family: var(--font-display);
+  .font-display { font-family: var(--font-display); letter-spacing: -0.025em; }
+  .font-display-italic { font-family: var(--font-display); font-style: italic; letter-spacing: -0.01em; }
+  .bg-ink { background-color: var(--ink); color: var(--ink-contrast); }
+  .text-ink { color: var(--ink); }
+  .eyebrow { font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; }
+  .skeleton {
+    background: linear-gradient(90deg, var(--color-slate-200) 25%, var(--color-slate-100) 50%, var(--color-slate-200) 75%);
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
   }
-  .arch {
-    border-radius: 999px 999px 1.25rem 1.25rem;
+  .reveal {
+    opacity: 0;
+    transform: translateY(60px) scale(0.96);
+    will-change: transform, opacity;
+    transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1), transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+  .reveal.in {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  .press { transition: transform 0.15s ease; }
+  .press:active { transform: scale(0.96); }
+  .heart-pop { animation: heart 0.45s ease; }
+  .word-mask { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.08em; margin-bottom: -0.08em; }
+  .word-mask > span { display: inline-block; transform: translateY(110%); animation: word-up 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards; animation-delay: var(--w-delay, 0ms); }
+
+  /* ── Intense Ultra-Translucent Glassmorphism Styles ── */
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 
+      0 16px 40px -10px rgba(99, 102, 241, 0.12),
+      0 4px 16px -2px rgba(30, 27, 75, 0.04),
+      inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 2px 0 rgba(255, 255, 255, 0.3);
+  }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.48);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 
+      0 12px 32px -6px rgba(100, 116, 139, 0.1),
+      0 4px 12px -2px rgba(99, 102, 241, 0.05),
+      inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1px 2px 0 rgba(255, 255, 255, 0.3);
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.68);
+    transform: translateY(-3px);
+    backdrop-filter: blur(32px) saturate(210%);
+    -webkit-backdrop-filter: blur(32px) saturate(210%);
+    box-shadow: 
+      0 20px 45px -8px rgba(99, 102, 241, 0.2),
+      0 8px 20px -2px rgba(99, 102, 241, 0.1),
+      inset 0 2px 3px 0 rgba(255, 255, 255, 1),
+      inset 0 -1px 2px 0 rgba(255, 255, 255, 0.4);
+    border-color: rgba(255, 255, 255, 1);
+  }
+  .glass-btn-active {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.4) 0%, rgba(139, 92, 246, 0.55) 100%);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 6px 18px 0 rgba(99, 102, 241, 0.3), inset 0 1px 2px 0 rgba(255, 255, 255, 0.85);
+  }
+  .glass-input {
+    background: rgba(255, 255, 255, 0.5) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1.5px solid rgba(255, 255, 255, 0.85) !important;
+    box-shadow: inset 0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 2px 8px 0 rgba(99, 102, 241, 0.04);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal { opacity: 1; transform: none; }
+  .word-mask > span { transform: none; }
+  /* The ticker is slow, ambient and non-essential, but it is part of the design: keep it running. */
+  .marquee-track { animation: marquee 60s linear infinite !important; }
+}
+
+/* Landing page: featured grid. Scroll-skew/blur (--sk / --bl from Home.jsx), warp-in on entry, hover pill + arrow. */
+.lusion-grid { perspective: 1400px; }
+.lusion-grid > * > * {
+  transform: skewY(var(--sk, 0deg));
+  filter: blur(var(--bl, 0px));
+  will-change: transform, filter;
+}
+@supports (animation-timeline: view()) {
+  @keyframes lusion-warp-in {
+    from { opacity: 0; rotate: 1 0 0 16deg; scale: 0.9; translate: 0 70px; }
+    to   { opacity: 1; rotate: 1 0 0 0deg;  scale: 1;   translate: 0 0; }
+  }
+  .lusion-grid > * > * {
+    transform-origin: 50% 100%;
+    animation: lusion-warp-in linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 85%;
+  }
+}
+.lusion-grid h3 { position: relative; transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s; }
+.lusion-grid h3::before {
+  content: "→";
+  font-family: system-ui, sans-serif;
+  font-weight: 400;
+  position: absolute;
+  left: -1.7rem;
+  opacity: 0;
+  transform: translateX(-0.6rem);
+  transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.lusion-grid .group:hover h3 { transform: translateX(1.7rem); }
+.lusion-grid .group:hover h3::before { opacity: 1; transform: translateX(0); }
+/* centred pill on the image while hovering, like the reel's play button */
+.lusion-grid .group > a > div:first-child::after {
+  content: "VIEW PROFILE";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: max-content;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  padding: 0 1.6rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+.lusion-grid .group:hover > a > div:first-child::after { opacity: 1; transform: scale(1); }
+
+/* Landing page motion is the point of the design: keep it even when the OS asks for reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .lusion-grid > * > * { animation-duration: auto !important; }
+  .lusion-grid h3,
+  .lusion-grid h3::before,
+  .lusion-grid .group > a > div:first-child::after { transition-duration: 0.45s !important; }
+}
+
+/* Auth pages: chunky rounded fields (bright playful style) */
+.auth-form input:not([type="radio"]):not([type="checkbox"]),
+.auth-form select {
+  border-radius: 1rem;
+  border-color: transparent;
+  padding-left: 1.1rem;
+  padding-right: 1.1rem;
+  height: 3.1rem;
+  background: #fff;
+  box-shadow: 0 0 0 1px #e4dfd2;
+}
+.auth-form input:focus, .auth-form select:focus { box-shadow: 0 0 0 2px #1d1a2b; outline: none; }
+.auth-form button[type="submit"] { border-radius: 1rem; height: 3.2rem; background: #1d1a2b; font-size: 0.95rem; }

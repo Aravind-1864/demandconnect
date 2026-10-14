@@ -11,11 +11,21 @@ const signToken = (user) =>
   });
 
 exports.register = asyncHandler(async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, businessName, categories, location } = req.body;
 
   if (await User.exists({ email })) throw ApiError.conflict("An account with this email already exists");
 
   const user = await User.create({ name, email, role, passwordHash: await User.hashPassword(password) });
+
+  if (role === "PROVIDER") {
+    await ProviderProfile.create({
+      user: user._id,
+      businessName: businessName?.trim() || `${name}'s Services`,
+      categories: Array.isArray(categories) && categories.length ? categories : [],
+      location: location?.trim() || "Hyderabad",
+    });
+  }
+
   ok(res, { user, token: signToken(user) }, 201);
 });
 

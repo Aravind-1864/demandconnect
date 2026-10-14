@@ -107,3 +107,122 @@ exports.compareProposals = asyncHandler(async (req, res) => {
     summary: await ai.summarizeProposals(proposals, request),
   });
 });
+
+/**
+ * POST /ai/packages — builds complete vendor bundles for a multi-service event.
+ * Each service is matched independently with the same transparent scoring, then
+ * bundles are assembled by strategy. Totals use starting prices, so they are estimates.
+ */
+exports.packages = asyncHandler(async (req, res) => {
+  const request = await loadOwned(req.body.requestId, req.user);
+  await request.populate("services.category", "name");
+
+  const activeProviderIds = await User.find({ role: "PROVIDER", isActive: true }).distinct("_id");
+  const { start, end } = dayRange(request.eventDate);
+
+  const perService = [];
+  for (const service of request.services) {
+    const categoryId = service.category._id;
+    const candidates = await ProviderProfile.find({ categories: categoryId, user: { $in: activeProviderIds } })
+      .populate("categories", "name slug")
+      .lean();
+
+    const busy = await Booking.find({
+      provider: { $in: candidates.map((c) => c.user) },
+      eventDate: { $gte: start, $lt: end },
+      status: { $in: ["CONFIRMED", "IN_PROGRESS"] },
+    })
+      .select("provider eventDate")
+      .lean();
+    const busyByProvider = new Map();
+    for (const b of busy) {
+      const key = String(b.provider);
+      if (!busyByProvider.has(key)) busyByProvider.set(key, new Set());
+      busyByProvider.get(key).add(dayKey(b.eventDate));
+    }
+
+    const { matches } = matching.rankProviders(
+      candidates,
+      {
+        categoryIds: [categoryId],
+        categoryNames: [service.category.name],
+        requirements: service.requirements,
+        location: request.location,
+        eventDate: request.eventDate,
+        budgetMax: request.budgetMax,
+      },
+      { busyByProvider }
+    );
+    perService.push({ category: service.category.name, matches });
+  }
+
+  const pick = {
+    BEST_MATCH: (m) => m[0],
+    BEST_VALUE: (m) => {
+      const decent = m.filter((x) => x.score >= 60);
+      return [...(decent.length ? decent : m)].sort(
+        (a, b) => (a.provider.startingPrice || 0) - (b.provider.startingPrice || 0) || b.score - a.score
+      )[0];
+    },
+    TOP_RATED: (m) =>
+      [...m].sort(
+        (a, b) =>
+          (b.provider.ratingCount ? b.provider.ratingAverage : 0) - (a.provider.ratingCount ? a.provider.ratingAverage : 0) ||
+          b.score - a.score
+      )[0],
+  };
+  const labels = {
+    BEST_MATCH: "Best match",
+    BEST_VALUE: "Best value",
+    TOP_RATED: "Top rated",
+  };
+
+  const seen = new Set();
+  const packages = [];
+  for (const key of Object.keys(pick)) {
+    const items = [];
+    const missing = [];
+    for (const s of perService) {
+      const chosen = s.matches.length ? pick[key](s.matches) : null;
+      if (!chosen) missing.push(s.category);
+      else items.push({ service: s.category, score: chosen.score, explanation: chosen.explanation, provider: chosen.provider });
+    }
+    if (items.length === 0) continue;
+
+    const signature = items.map((i) => String(i.provider._id)).join("|");
+    if (seen.has(signature)) continue;
+    seen.add(signature);
+
+    // A provider covering two services is only counted once.
+    const unique = new Map(items.map((i) => [String(i.provider._id), i.provider.startingPrice || 0]));
+    const total = [...unique.values()].reduce((a, b) => a + b, 0);
+
+    packages.push({
+      key,
+      label: labels[key],
+      total,
+      withinBudget: request.budgetMax ? total <= request.budgetMax : null,
+      avgScore: Math.round((items.reduce((a, i) => a + i.score, 0) / items.length) * 10) / 10,
+      missing,
+      items: items.map((i) => ({
+        service: i.service,
+        score: i.score,
+        explanation: i.explanation,
+        provider: {
+          _id: i.provider._id,
+          businessName: i.provider.businessName,
+          location: i.provider.location,
+          startingPrice: i.provider.startingPrice,
+          ratingAverage: i.provider.ratingAverage,
+          ratingCount: i.provider.ratingCount,
+          verified: i.provider.verified,
+          coverImage: i.provider.coverImage,
+          portfolio: (i.provider.portfolio || []).slice(0, 1),
+          categories: i.provider.categories,
+        },
+      })),
+    });
+  }
+
+  ok(res, { budgetMax: request.budgetMax, packages });
+});

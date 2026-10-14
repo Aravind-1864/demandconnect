@@ -2,6 +2,7 @@ const ServiceRequest = require("../models/ServiceRequest");
 const ProviderProfile = require("../models/ProviderProfile");
 const Category = require("../models/Category");
 const Proposal = require("../models/Proposal");
+const { notify } = require("../services/notificationService");
 const ApiError = require("../utils/ApiError");
 const { asyncHandler, assertObjectId, startOfToday, ok } = require("../utils/helpers");
 
@@ -42,7 +43,38 @@ exports.create = asyncHandler(async (req, res) => {
   }
 
   const request = await ServiceRequest.create({ ...req.body, customer: req.user._id });
-  ok(res, await request.populate(POPULATE), 201);
+  const populated = await request.populate(POPULATE);
+
+  // Broadcast to relevant providers via real-time WebSocket & in-app notification
+  try {
+    const categoryIds = (req.body.services || []).map((s) => s.category);
+    const matchingProviders = await ProviderProfile.find({ categories: { $in: categoryIds } }).select("user");
+    const serviceNames = (populated.services || []).map((s) => s.category?.name).filter(Boolean).join(", ");
+
+    for (const p of matchingProviders) {
+      if (String(p.user) !== String(req.user._id)) {
+        await notify(p.user, {
+          title: `New Requirement: ${populated.title}`,
+          body: `A customer requested ${serviceNames || "services"} in ${populated.location || "your area"}. Tap to quote!`,
+          link: "/provider/requests",
+        });
+      }
+    }
+
+    const realtime = require("../services/realtime");
+    realtime.broadcast("new_request", {
+      _id: populated._id,
+      title: populated.title,
+      location: populated.location,
+      eventDate: populated.eventDate,
+      categoryIds,
+      serviceNames,
+    });
+  } catch (err) {
+    console.warn("Realtime dispatch failed (non-critical):", err.message);
+  }
+
+  ok(res, populated, 201);
 });
 
 exports.mine = asyncHandler(async (req, res) => {
@@ -142,8 +174,27 @@ exports.invite = asyncHandler(async (req, res) => {
   const request = await loadOwned(req.params.id, req.user);
   if (request.status !== "OPEN") throw ApiError.conflict("Only open requests can invite providers");
 
-  if (!(await ProviderProfile.exists({ _id: req.body.providerId }))) throw ApiError.notFound("Provider not found");
+  const target = await ProviderProfile.findById(req.body.providerId).select("user businessName");
+  if (!target) throw ApiError.notFound("Provider not found");
 
+  const already = request.invitedProviders.some((p) => String(p) === String(target._id));
   await ServiceRequest.updateOne({ _id: request._id }, { $addToSet: { invitedProviders: req.body.providerId } });
+  if (!already) {
+    await notify(target.user, {
+      type: "INVITE",
+      title: "You were invited to quote",
+      body: request.title + " · " + request.location,
+      link: "/provider/requests",
+    });
+  }
   ok(res, { message: "Provider invited" });
+});
+
+/** PATCH /requests/:id/plan — customer's checklist and budget split. */
+exports.updatePlan = asyncHandler(async (req, res) => {
+  const request = await loadOwned(req.params.id, req.user);
+  request.checklist = req.body.checklist;
+  request.budgetPlan = req.body.budgetPlan;
+  await request.save();
+  ok(res, { checklist: request.checklist, budgetPlan: request.budgetPlan });
 });

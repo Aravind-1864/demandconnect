@@ -1,7 +1,4 @@
 import axios from "axios";
-import demoAdapter from "./demoApi";
-
-export const DEMO = import.meta.env.VITE_DEMO === "true";
 
 export const TOKEN_KEY = "dc_token";
 
@@ -9,9 +6,6 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "/api",
   timeout: 20000,
 });
-
-// Demo mode answers every request from in-browser sample data (no backend needed).
-if (DEMO) api.defaults.adapter = demoAdapter;
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem(TOKEN_KEY);

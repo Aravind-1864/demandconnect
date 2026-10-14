@@ -8,6 +8,7 @@ const v = require("../validators");
 router.use(protect, authorize("ADMIN"));
 
 router.get("/stats", c.stats);
+router.get("/analytics", c.analytics);
 router.get("/users", c.listUsers);
 router.patch("/users/:id", validate({ params: v.idParams, body: v.adminUserUpdate }), c.setUserActive);
 router.get("/providers", c.listProviders);

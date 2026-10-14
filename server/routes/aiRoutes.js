@@ -19,6 +19,7 @@ router.use(protect, authorize("CUSTOMER"), aiLimiter);
 
 router.post("/parse-requirement", validate({ body: v.parseRequirement }), c.parseRequirement);
 router.post("/recommendations", validate({ body: v.requestRef }), c.recommendations);
+router.post("/packages", validate({ body: v.requestRef }), c.packages);
 router.post("/compare-proposals", validate({ body: v.requestRef }), c.compareProposals);
 
 module.exports = router;

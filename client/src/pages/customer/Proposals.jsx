@@ -29,7 +29,7 @@ export default function Proposals() {
     setError("");
     try {
       await api.patch(`/proposals/${p._id}/accept`);
-      navigate("/customer/bookings");
+      navigate("/customer/bookings", { state: { celebrate: true } });
     } catch (err) {
       setError(errorMessage(err));
       reload();
@@ -126,6 +126,11 @@ export default function Proposals() {
                     <div className="mt-1"><Stars value={profile?.ratingAverage} count={profile?.ratingCount} /></div>
 
                     {p.message && <p className="mt-3 text-sm text-slate-600">“{p.message}”</p>}
+                    {p.provider && (
+                      <Link to={`/messages/${p.provider}`} className="mt-2 inline-block text-sm font-semibold text-brand-600 hover:text-brand-700">
+                        💬 Message {profile?.businessName}
+                      </Link>
+                    )}
 
                     <div className="mt-4 grid gap-4 sm:grid-cols-2">
                       <div>

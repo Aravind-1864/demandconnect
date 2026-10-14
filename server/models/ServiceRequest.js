@@ -26,6 +26,9 @@ const serviceRequestSchema = new mongoose.Schema(
     description: { type: String, trim: true, maxlength: 2000, default: "" },
     status: { type: String, enum: REQUEST_STATUSES, default: "OPEN", index: true },
     mode: { type: String, enum: ["MANUAL", "AI"], default: "MANUAL" },
+    // Customer-side planning tools (checklist + budget split).
+    checklist: [{ _id: false, text: { type: String, trim: true, maxlength: 140 }, done: { type: Boolean, default: false } }],
+    budgetPlan: [{ _id: false, label: { type: String, trim: true, maxlength: 60 }, amount: { type: Number, min: 0, default: 0 } }],
     // Providers the customer explicitly asked to quote (Manual / AI mode "send request").
     invitedProviders: [{ type: mongoose.Schema.Types.ObjectId, ref: "ProviderProfile" }],
   },

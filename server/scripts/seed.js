@@ -15,6 +15,8 @@ const ServiceRequest = require("../models/ServiceRequest");
 const Proposal = require("../models/Proposal");
 const Booking = require("../models/Booking");
 const Review = require("../models/Review");
+const Message = require("../models/Message");
+const Notification = require("../models/Notification");
 
 const DEMO_PASSWORD = "Password123!";
 const img = (id) => `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=1200&q=80`;
@@ -111,7 +113,7 @@ async function main() {
 
   if (process.argv.includes("--reset")) {
     await Promise.all(
-      [User, Category, ProviderProfile, ServiceRequest, Proposal, Booking, Review].map((m) => m.deleteMany({}))
+      [User, Category, ProviderProfile, ServiceRequest, Proposal, Booking, Review, Message, Notification].map((m) => m.deleteMany({}))
     );
     console.log("Collections cleared");
   }
@@ -184,6 +186,69 @@ async function main() {
       );
     }
   }
+
+  // ---- A live scenario so dashboards, chat, planner and compare have content ----
+  const demoTitle = "Wedding · Photography + Catering";
+  if (!(await ServiceRequest.exists({ customer: customer._id, title: demoTitle }))) {
+    const eventDate = new Date(Date.now() + 60 * 864e5);
+    eventDate.setUTCHours(0, 0, 0, 0);
+    const request = await ServiceRequest.create({
+      customer: customer._id, title: demoTitle, eventType: "Wedding", location: "Hyderabad", eventDate,
+      duration: 8, guestCount: 250, budgetMin: 0, budgetMax: 150000, mode: "AI",
+      description: "Two-day wedding. Candid and traditional coverage, plus a South Indian buffet for 250 guests.",
+      services: [
+        { category: cats.Photography._id, requirements: ["Candid photography", "Traditional photography"] },
+        { category: cats.Catering._id, requirements: ["South Indian buffet", "Vegetarian menus"] },
+      ],
+      checklist: [
+        { text: "Confirm the venue and date", done: true },
+        { text: "Finalise the guest list", done: true },
+        { text: "Book photographer and caterer", done: false },
+        { text: "Send invitations", done: false },
+      ],
+      budgetPlan: [{ label: "Photography", amount: 60000 }, { label: "Catering", amount: 80000 }],
+    });
+
+    const arjun = await ProviderProfile.findOne({ businessName: "Frame & Light Studios" });
+    const meera = await ProviderProfile.findOne({ businessName: "Moments by Meera" });
+    const lakshmi = await ProviderProfile.findOne({ businessName: "Lakshmi Royal Caterers" });
+    const offers = [
+      [arjun, 38000, ["8 hours coverage", "2 photographers", "Edited album (60 pages)"], ["Travel outside Hyderabad"], "We'd love to cover your wedding. Happy to do a pre-event consultation."],
+      [meera, 47000, ["10 hours coverage", "Cinematic highlight film", "Drone shots", "Album (80 pages)"], [], "A cinematic approach with a highlight film delivered within three weeks."],
+      [lakshmi, 110000, ["250-guest South Indian buffet", "Live dosa counter", "Service staff"], ["Venue rental"], "Freshly cooked on site. Tasting session available before you confirm."],
+    ];
+    for (const [profile, price, included, excluded, message] of offers) {
+      await Proposal.create({
+        request: request._id, provider: profile.user, providerProfile: profile._id,
+        proposedPrice: price, includedServices: included, exclusions: excluded, message,
+        createdAt: new Date(Date.now() - 3600e3 * (2 + Math.random() * 20)),
+      });
+    }
+    await ServiceRequest.updateOne({ _id: request._id }, { invitedProviders: [arjun._id, lakshmi._id] });
+
+    await Notification.insertMany([
+      { user: customer._id, type: "PROPOSAL", title: "New proposal from Frame & Light Studios", body: "₹38,000 for " + demoTitle, link: "/customer/requests/" + request._id + "/proposals" },
+      { user: customer._id, type: "PROPOSAL", title: "New proposal from Moments by Meera", body: "₹47,000 for " + demoTitle, link: "/customer/requests/" + request._id + "/proposals" },
+      { user: customer._id, type: "PROPOSAL", title: "New proposal from Lakshmi Royal Caterers", body: "₹1,10,000 for " + demoTitle, link: "/customer/requests/" + request._id + "/proposals", read: true },
+    ]);
+    await Notification.create({
+      user: arjun.user, type: "INVITE", title: "You were invited to quote", body: demoTitle + " · Hyderabad", link: "/provider/requests",
+    });
+
+    const convo = [String(customer._id), String(arjun.user)].sort().join("_");
+    const t = (mins) => new Date(Date.now() - mins * 60e3);
+    await Message.insertMany([
+      { conversationId: convo, sender: customer._id, recipient: arjun.user, text: "Hi! Are you free on our wedding date? We'd like both candid and traditional coverage.", createdAt: t(180), readAt: t(170) },
+      { conversationId: convo, sender: arjun.user, recipient: customer._id, text: "Hello Priya, yes, that date is open. I've just sent a proposal with two photographers and an album.", createdAt: t(160), readAt: t(150) },
+      { conversationId: convo, sender: arjun.user, recipient: customer._id, text: "Happy to arrange a quick call this week if you'd like to go through the shot list.", createdAt: t(25) },
+    ]);
+  }
+
+  // A provider waiting for verification so the admin queue is not empty.
+  await ProviderProfile.updateOne(
+    { businessName: "Click Craft", "verification.status": { $ne: "PENDING" } },
+    { verification: { status: "PENDING", documentUrl: "https://example.com/click-craft-business-licence.pdf", submittedAt: new Date() } }
+  );
 
   console.log("\nSeed complete. Demo accounts (password for all: " + DEMO_PASSWORD + ")");
   console.log("  admin     admin@demo.com");

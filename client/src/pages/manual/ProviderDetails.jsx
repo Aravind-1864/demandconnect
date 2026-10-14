@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import useFetch from "../../utils/useFetch";
 import { formatDate, formatINR } from "../../utils/format";
 import { providerCover, sized } from "../../utils/images";
+import { CompareToggle, HeartButton } from "../../components/widgets";
 import { Alert, Badge, Button, Card, EmptyState, Modal, PageLoader, Stars } from "../../components/ui";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -30,27 +31,47 @@ export default function ProviderDetails() {
   return (
     <div>
       {/* Hero */}
-      <section className="relative isolate overflow-hidden">
+      <section className="relative isolate -mt-20 overflow-hidden">
         <img src={sized(providerCover(p), 1800)} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-slate-900/90 via-slate-900/45 to-slate-900/20" />
-        <div className="mx-auto flex min-h-[340px] max-w-7xl flex-col justify-end px-4 pb-10 pt-24 text-white sm:px-6">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-stone-900/90 via-stone-900/45 to-stone-900/20" />
+        <div className="mx-auto flex min-h-[460px] max-w-7xl flex-col justify-end px-4 pb-10 pt-32 text-white sm:px-6">
           <Link to="/providers" className="absolute left-4 top-6 text-sm text-white/80 hover:text-white sm:left-6">← All providers</Link>
           <div className="flex flex-wrap items-end justify-between gap-6">
             <div>
               <div className="flex flex-wrap gap-2">
                 {p.categories?.map((c) => (
-                  <span key={c._id} className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold backdrop-blur">{c.name}</span>
+                  <span key={c._id} className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">{c.name}</span>
                 ))}
                 {p.verified && <span className="rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold">✓ Verified</span>}
               </div>
-              <h1 className="mt-3 text-4xl font-semibold sm:text-5xl">{p.businessName}</h1>
+              <h1 className="mt-3 text-4xl font-medium sm:text-5xl">{p.businessName}</h1>
               <p className="mt-2 text-white/80">📍 {p.location} · {p.experienceYears} yrs experience</p>
-              <div className="mt-2 text-white [&_*]:!text-white/90"><Stars value={p.ratingAverage} count={p.ratingCount} size="text-base" /></div>
+              <div className="mt-2 flex flex-wrap items-center gap-3 text-white [&_*]:!text-white/90">
+                <Stars value={p.ratingAverage} count={p.ratingCount} size="text-base" />
+                {p.avgResponseHours !== null && p.avgResponseHours !== undefined && (
+                  <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+                    ⚡ Replies with a quote in ~{p.avgResponseHours < 1 ? "under an hour" : `${Math.round(p.avgResponseHours)} h`}
+                  </span>
+                )}
+              </div>
+              <div className="mt-4 flex items-center gap-2">
+                <HeartButton providerId={p._id} />
+                <CompareToggle providerId={p._id} />
+              </div>
             </div>
-            <div className="rounded-2xl bg-white p-5 text-slate-900 shadow-xl">
-              <p className="text-xs uppercase tracking-wide text-slate-400">Starting from</p>
-              <p className="font-display text-3xl font-semibold">{p.startingPrice ? formatINR(p.startingPrice) : "On request"}</p>
-              {canRequest && <Button className="mt-3 w-full" onClick={requestQuote}>Request a quote</Button>}
+            <div className="rounded-xl border border-slate-200 bg-white p-5 text-slate-900 shadow-lg">
+              <p className="text-sm text-slate-500">Starting from</p>
+              <p className="mt-0.5 text-3xl font-bold tracking-tight">{p.startingPrice ? formatINR(p.startingPrice) : "On request"}</p>
+              {canRequest && <Button className="mt-4 w-full !rounded-lg !bg-brand-600 text-white hover:!bg-brand-700" onClick={requestQuote}>Request a quote</Button>}
+              {canRequest && (
+                <Button
+                  variant="secondary"
+                  className="mt-2 w-full !rounded-lg !bg-white hover:!bg-slate-50 !ring-slate-200"
+                  onClick={() => navigate(user ? `/messages/${p.user._id}` : "/login", { state: { from: `/messages/${p.user._id}` } })}
+                >
+                  Message provider
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -101,6 +122,21 @@ export default function ProviderDetails() {
                       <span className="text-amber-500">{"★".repeat(r.rating)}<span className="text-slate-300">{"★".repeat(5 - r.rating)}</span></span>
                     </div>
                     {r.comment && <p className="mt-1 text-slate-600">{r.comment}</p>}
+                    {r.photos?.length > 0 && (
+                      <div className="mt-3 flex gap-2">
+                        {r.photos.map((u) => (
+                          <button key={u} onClick={() => setLightbox(u)} className="h-16 w-16 overflow-hidden rounded-lg bg-slate-200">
+                            <img src={u} alt="Review photo" className="h-full w-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {r.reply?.text && (
+                      <div className="mt-3 rounded-xl bg-slate-50 p-3 text-sm">
+                        <p className="text-xs font-semibold text-slate-500">Reply from {p.businessName}</p>
+                        <p className="mt-0.5 text-slate-700">{r.reply.text}</p>
+                      </div>
+                    )}
                     <p className="mt-1 text-xs text-slate-400">{formatDate(r.createdAt)}</p>
                   </li>
                 ))}

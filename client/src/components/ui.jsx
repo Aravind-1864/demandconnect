@@ -5,8 +5,8 @@ const cx = (...parts) => parts.filter(Boolean).join(" ");
 
 // ---- Buttons ----------------------------------------------------------------
 const BUTTON_VARIANTS = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700 shadow-sm",
-  secondary: "bg-white text-slate-700 ring-1 ring-inset ring-slate-300 hover:bg-slate-50",
+  primary: "bg-ink hover:opacity-85",
+  secondary: "bg-white/70 text-slate-800 ring-1 ring-inset ring-slate-300 hover:bg-white",
   danger: "bg-red-600 text-white hover:bg-red-700 shadow-sm",
   ghost: "text-slate-600 hover:bg-slate-100",
   success: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm",
@@ -45,7 +45,7 @@ export function PageHeader({ title, subtitle, actions }) {
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">{title}</h1>
+        <h1 className="text-4xl font-medium tracking-tight text-slate-900">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -216,7 +216,7 @@ export function Modal({ open, title, onClose, children }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="absolute inset-0 bg-slate-900/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-stone-900/50" onClick={onClose} />
       <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">{title}</h2>

@@ -2,12 +2,13 @@ const Booking = require("../models/Booking");
 const ServiceRequest = require("../models/ServiceRequest");
 const Proposal = require("../models/Proposal");
 const Review = require("../models/Review");
+const { notify } = require("../services/notificationService");
 const ApiError = require("../utils/ApiError");
 const { asyncHandler, assertObjectId, ok } = require("../utils/helpers");
 
 const POPULATE = [
   { path: "request", select: "title eventType location eventDate services description" },
-  { path: "providerProfile", select: "businessName location ratingAverage ratingCount" },
+  { path: "providerProfile", select: "businessName location ratingAverage ratingCount user" },
   { path: "customer", select: "name" },
 ];
 
@@ -39,12 +40,12 @@ exports.mine = asyncHandler(async (req, res) => {
   const field = req.user.role === "PROVIDER" ? "provider" : "customer";
   const bookings = await Booking.find({ [field]: req.user._id }).populate(POPULATE).sort("-createdAt").lean();
 
-  const reviewed = new Set(
-    (await Review.find({ booking: { $in: bookings.map((b) => b._id) } }).select("booking").lean()).map((r) =>
-      String(r.booking)
-    )
+  const reviews = await Review.find({ booking: { $in: bookings.map((b) => b._id) } }).lean();
+  const byBooking = new Map(reviews.map((r) => [String(r.booking), r]));
+  ok(
+    res,
+    bookings.map((b) => ({ ...b, reviewed: byBooking.has(String(b._id)), review: byBooking.get(String(b._id)) || null }))
   );
-  ok(res, bookings.map((b) => ({ ...b, reviewed: reviewed.has(String(b._id)) })));
 });
 
 exports.getById = asyncHandler(async (req, res) => {
@@ -81,6 +82,15 @@ exports.updateStatus = asyncHandler(async (req, res) => {
     await ServiceRequest.updateOne({ _id: booking.request, status: "BOOKED" }, { status: "OPEN" });
     await Proposal.updateOne({ _id: booking.proposal }, { status: "WITHDRAWN" });
   }
+
+  const other = String(req.user._id) === String(booking.customer) ? booking.provider : booking.customer;
+  const labels = { IN_PROGRESS: "started work", COMPLETED: "marked the job as completed", CANCELLED: "cancelled the booking" };
+  await notify(other, {
+    type: "BOOKING",
+    title: "Booking update",
+    body: req.user.name + " " + labels[status],
+    link: other === booking.provider || String(other) === String(booking.provider) ? "/provider/bookings" : "/customer/bookings",
+  });
 
   ok(res, updated);
 });

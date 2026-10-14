@@ -2,6 +2,7 @@ const Proposal = require("../models/Proposal");
 const ServiceRequest = require("../models/ServiceRequest");
 const ProviderProfile = require("../models/ProviderProfile");
 const Booking = require("../models/Booking");
+const { notify } = require("../services/notificationService");
 const { ACTIVE_BOOKING_STATUSES } = require("../models/Booking");
 const ApiError = require("../utils/ApiError");
 const { asyncHandler, assertObjectId, dayRange, startOfToday, ok } = require("../utils/helpers");
@@ -30,6 +31,13 @@ exports.create = asyncHandler(async (req, res) => {
   const proposal = existing
     ? await Object.assign(existing, fields).save()
     : await Proposal.create({ ...fields, request: requestId, provider: req.user._id, providerProfile: profile._id });
+
+  await notify(request.customer, {
+    type: "PROPOSAL",
+    title: "New proposal from " + profile.businessName,
+    body: "₹" + Number(proposedPrice).toLocaleString("en-IN") + " for " + request.title,
+    link: "/customer/requests/" + request._id + "/proposals",
+  });
 
   ok(res, proposal, existing ? 200 : 201);
 });
@@ -128,6 +136,13 @@ exports.accept = asyncHandler(async (req, res) => {
     { status: "REJECTED" }
   );
 
+  await notify(proposal.provider, {
+    type: "PROPOSAL_ACCEPTED",
+    title: "Your proposal was accepted!",
+    body: request.title + " · ₹" + proposal.proposedPrice.toLocaleString("en-IN"),
+    link: "/provider/bookings",
+  });
+
   ok(res, booking, 201);
 });
 
@@ -143,6 +158,12 @@ exports.reject = asyncHandler(async (req, res) => {
     { returnDocument: "after" }
   );
   if (!updated) throw ApiError.conflict("Only pending proposals can be rejected");
+  await notify(updated.provider, {
+    type: "PROPOSAL_REJECTED",
+    title: "A proposal was declined",
+    body: "The customer chose not to proceed with your offer.",
+    link: "/provider/proposals",
+  });
   ok(res, updated);
 });
 

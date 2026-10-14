@@ -1,52 +1,70 @@
 import { Link } from "react-router-dom";
 import { formatINR } from "../utils/format";
 import { providerCover, sized } from "../utils/images";
-import { Stars } from "./ui";
+import { CompareToggle, HeartButton } from "./widgets";
 
-export default function ProviderCard({ provider }) {
-  const { _id, businessName, categories = [], location, startingPrice, skills = [], ratingAverage, ratingCount, verified } = provider;
+/** Editorial card: oversized rounded image, small uppercase tags, big title with an arrow. */
+export default function ProviderCard({ provider, showActions = true }) {
+  const { _id, businessName, categories = [], location, startingPrice, ratingAverage, ratingCount, verified } = provider;
 
   return (
-    <Link
-      to={`/providers/${_id}`}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl"
-    >
-      <div className="relative aspect-[4/3] overflow-hidden bg-slate-200">
-        <img
-          src={sized(providerCover(provider), 700)}
-          alt={`${businessName} work sample`}
-          loading="lazy"
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
-        {verified && (
-          <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-bold text-emerald-700 shadow">✓ Verified</span>
-        )}
-        <div className="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
-          {categories.slice(0, 2).map((c) => (
-            <span key={c._id} className="rounded-full bg-black/45 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur">
-              {c.name}
+    <article className="group relative">
+      <Link to={`/providers/${_id}`} aria-label={`View ${businessName}`} className="block">
+
+        {/* ── Lusion Style Card Container ─────────────────────────────────── */}
+        <div className="relative aspect-[16/10] overflow-hidden rounded-[1.6rem] bg-slate-900 border border-white/60 shadow-lg transition-all duration-700 ease-out group-hover:-translate-y-2 group-hover:shadow-2xl group-hover:shadow-indigo-500/15">
+          <img
+            src={sized(providerCover(provider), 1000)}
+            alt={`${businessName} work sample`}
+            loading="lazy"
+            style={{ willChange: "transform" }}
+            className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105"
+          />
+
+          {/* Luminous frosted dark gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-transparent opacity-60 transition-opacity duration-500 group-hover:opacity-80" />
+
+          {/* Verified badge */}
+          {verified && (
+            <span className="absolute bottom-3.5 left-3.5 rounded-full bg-white/90 backdrop-blur-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-800 shadow-sm transition-all duration-300">
+              ✓ Verified
             </span>
-          ))}
-        </div>
-      </div>
+          )}
 
-      <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="font-display text-lg font-semibold leading-snug text-slate-900">{businessName}</h3>
-          <Stars value={ratingAverage} count={ratingCount} />
+          {/* Floating arrow button */}
+          <span className="absolute bottom-3.5 right-3.5 flex h-10 w-10 translate-y-3 items-center justify-center rounded-full bg-white text-base text-slate-900 opacity-0 shadow-lg transition-all duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100">
+            ↗
+          </span>
         </div>
-        <p className="mt-1 text-sm text-slate-500">📍 {location}</p>
-        {skills.length > 0 && <p className="mt-3 line-clamp-1 text-xs text-slate-500">{skills.slice(0, 4).join(" · ")}</p>}
 
-        <div className="mt-auto flex items-end justify-between border-t border-slate-100 pt-4">
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-slate-400">Starting from</p>
-            <p className="font-display text-xl font-semibold text-slate-900">{startingPrice ? formatINR(startingPrice) : "On request"}</p>
+        {/* ── Text below image (Lusion uppercase subtitle format) ── */}
+        <p className="mt-4 text-[11px] font-bold uppercase tracking-widest text-slate-500">
+          {[...categories.map((c) => c.name), location].filter(Boolean).join(" • ")}
+        </p>
+
+        <div className="mt-1 flex items-baseline justify-between gap-4">
+          <h3 className="font-display text-2xl font-bold tracking-tight text-slate-900 transition-colors duration-300 group-hover:text-brand-600">
+            {businessName}
+          </h3>
+
+          <div className="shrink-0 text-right text-xs">
+            <span className="font-bold text-slate-900">{startingPrice ? `from ${formatINR(startingPrice)}` : "On request"}</span>
+            <span className="text-slate-500 ml-1.5">{ratingCount ? `★ ${ratingAverage.toFixed(1)}` : "New"}</span>
           </div>
-          <span className="text-sm font-semibold text-brand-600 transition group-hover:translate-x-0.5">View →</span>
         </div>
-      </div>
-    </Link>
+
+      </Link>
+
+      {showActions && (
+        <div className="absolute right-4 top-4 flex flex-col items-end gap-2">
+          <HeartButton providerId={_id} />
+        </div>
+      )}
+      {showActions && (
+        <div className="absolute left-4 top-4">
+          <CompareToggle providerId={_id} />
+        </div>
+      )}
+    </article>
   );
 }

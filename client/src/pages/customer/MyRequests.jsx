@@ -57,6 +57,9 @@ export default function MyRequests() {
                       Proposals{r.pendingProposals ? ` (${r.pendingProposals})` : ""}
                     </Button>
                   </Link>
+                  {["OPEN", "BOOKED"].includes(r.status) && (
+                    <Link to={`/customer/requests/${r._id}/plan`}><Button size="sm" variant="secondary">Plan</Button></Link>
+                  )}
                   {r.status === "OPEN" && (
                     <>
                       <Link to={`/ai/recommendations/${r._id}`}><Button size="sm" variant="secondary">Recommendations</Button></Link>

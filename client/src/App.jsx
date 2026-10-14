@@ -26,6 +26,12 @@ const ManageProfile = lazy(() => import("./pages/provider/ManageProfile"));
 const AvailableRequests = lazy(() => import("./pages/provider/AvailableRequests"));
 const MyProposals = lazy(() => import("./pages/provider/MyProposals"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const Compare = lazy(() => import("./pages/manual/Compare"));
+const Shortlist = lazy(() => import("./pages/manual/Shortlist"));
+const Saved = lazy(() => import("./pages/customer/Saved"));
+const Planner = lazy(() => import("./pages/customer/Planner"));
+const Messages = lazy(() => import("./pages/Messages"));
+const ProviderCalendar = lazy(() => import("./pages/provider/ProviderCalendar"));
 
 function NotFound() {
   return (
@@ -47,6 +53,13 @@ export default function App() {
           <Route path="register" element={<Register />} />
           <Route path="providers" element={<ProviderListing />} />
           <Route path="providers/:id" element={<ProviderDetails />} />
+          <Route path="compare" element={<Compare />} />
+          <Route path="shortlist" element={<Shortlist />} />
+
+          <Route element={<ProtectedRoute roles={["CUSTOMER", "PROVIDER"]} />}>
+            <Route path="messages" element={<Messages />} />
+            <Route path="messages/:userId" element={<Messages />} />
+          </Route>
 
           <Route element={<ProtectedRoute roles={["CUSTOMER"]} />}>
             <Route path="choose-mode" element={<ChooseMode />} />
@@ -59,6 +72,8 @@ export default function App() {
               <Route path="customer/requests" element={<MyRequests />} />
               <Route path="customer/requests/new" element={<NewRequest />} />
               <Route path="customer/requests/:id/proposals" element={<Proposals />} />
+              <Route path="customer/requests/:id/plan" element={<Planner />} />
+              <Route path="customer/saved" element={<Saved />} />
               <Route path="customer/bookings" element={<Bookings />} />
             </Route>
           </Route>
@@ -70,6 +85,7 @@ export default function App() {
               <Route path="provider/requests" element={<AvailableRequests />} />
               <Route path="provider/proposals" element={<MyProposals />} />
               <Route path="provider/bookings" element={<Bookings />} />
+              <Route path="provider/calendar" element={<ProviderCalendar />} />
             </Route>
           </Route>
 

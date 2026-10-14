@@ -4,9 +4,15 @@ build/
 .env
 .env.*
 !.env.example
-!.env.demo
 *.log
 .DS_Store
 .vscode/
 .idea/
 coverage/
+
+# local database data and logs from dev
+.mongo-data/
+server/uploads/*
+!server/uploads/.gitkeep
+server/.localdb/
+server/.env.local.bak

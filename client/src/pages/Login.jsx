@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { homeFor, useAuth } from "../context/AuthContext";
 import { errorMessage } from "../services/api";
-import AuthShell from "../components/AuthShell";
+import AuthShell from "../components/AuthShellClassic";
 import { Alert, Button, Field, Input } from "../components/ui";
 
 export default function Login() {

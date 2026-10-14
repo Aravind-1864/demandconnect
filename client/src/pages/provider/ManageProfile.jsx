@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import api, { errorMessage } from "../../services/api";
 import useFetch from "../../utils/useFetch";
 import { formatDate, toInputDate, todayInput } from "../../utils/format";
+import { ImageUploader } from "../../components/visual";
 import { Alert, Badge, Button, Card, ChipInput, Field, Input, PageHeader, PageLoader, Textarea } from "../../components/ui";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -20,6 +21,7 @@ const empty = {
   experienceYears: "",
   workingDays: [0, 1, 2, 3, 4, 5, 6],
   blockedDates: [],
+  proposalTemplates: [],
 };
 
 export default function ManageProfile() {
@@ -49,6 +51,7 @@ export default function ManageProfile() {
       experienceYears: existing.experienceYears || "",
       workingDays: existing.availability?.workingDays ?? empty.workingDays,
       blockedDates: (existing.availability?.blockedDates || []).map(toInputDate),
+      proposalTemplates: (existing.proposalTemplates || []).map(({ name, includedServices, exclusions, message }) => ({ name, includedServices, exclusions, message })),
     });
   }, [existing]);
 
@@ -81,6 +84,7 @@ export default function ManageProfile() {
         portfolio: form.portfolio,
         experienceYears: Number(form.experienceYears) || 0,
         availability: { workingDays: form.workingDays, blockedDates: form.blockedDates },
+        proposalTemplates: form.proposalTemplates.filter((t) => t.name.trim()),
       };
       await (isNew ? api.post("/providers/profile", payload) : api.patch("/providers/profile", payload));
       setMessage({ tone: "success", text: isNew ? "Profile created — you're now visible to customers." : "Profile updated." });
@@ -183,18 +187,101 @@ export default function ManageProfile() {
         </Field>
       </Card>
 
-      <Card className="space-y-5 p-6">
-        <Field label="Cover image URL" hint="Shown at the top of your profile and on your card. A wide, high-quality photo works best.">
-          <Input type="url" value={form.coverImage} onChange={set("coverImage")} placeholder="https://…" />
+      <Card className="space-y-6 p-6">
+        <h2 className="font-semibold text-slate-900">Photos</h2>
+        <Field label="Cover image" hint="Shown at the top of your profile and on your card. A wide, high-quality photo works best.">
+          <ImageUploader value={form.coverImage} onChange={(coverImage) => setForm((f) => ({ ...f, coverImage }))} label="Drop your cover photo here or click to browse" />
         </Field>
-        <Field label="Portfolio image URLs" hint="Paste image links (e.g. from Cloudinary or Google Drive public links). Direct image uploads can be added later.">
-          <ChipInput value={form.portfolio} onChange={(portfolio) => setForm((f) => ({ ...f, portfolio }))} placeholder="https://…" max={20} />
+        <Field label="Portfolio" hint="Up to 12 images of your best work.">
+          <ImageUploader multiple max={12} value={form.portfolio} onChange={(portfolio) => setForm((f) => ({ ...f, portfolio }))} label="Drop portfolio images here or click to browse" />
         </Field>
       </Card>
+
+      <Card className="space-y-4 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-slate-900">Proposal templates</h2>
+            <p className="text-sm text-slate-500">Reusable inclusions and messages so you can answer requests in seconds.</p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={form.proposalTemplates.length >= 10}
+            onClick={() => setForm((f) => ({ ...f, proposalTemplates: [...f.proposalTemplates, { name: "", includedServices: [], exclusions: [], message: "" }] }))}
+          >
+            + Template
+          </Button>
+        </div>
+        {form.proposalTemplates.length === 0 && <p className="text-sm text-slate-400">No templates yet.</p>}
+        {form.proposalTemplates.map((t, i) => {
+          const patch = (p) => setForm((f) => ({ ...f, proposalTemplates: f.proposalTemplates.map((x, j) => (j === i ? { ...x, ...p } : x)) }));
+          return (
+            <div key={i} className="space-y-3 rounded-xl border border-slate-200 p-4">
+              <div className="flex gap-3">
+                <Input value={t.name} onChange={(e) => patch({ name: e.target.value })} placeholder="Template name, e.g. Wedding — full day" maxLength={60} />
+                <Button type="button" variant="ghost" size="sm" onClick={() => setForm((f) => ({ ...f, proposalTemplates: f.proposalTemplates.filter((_, j) => j !== i) }))}>Remove</Button>
+              </div>
+              <ChipInput value={t.includedServices} onChange={(includedServices) => patch({ includedServices })} placeholder="What's included…" />
+              <ChipInput value={t.exclusions} onChange={(exclusions) => patch({ exclusions })} placeholder="What's not included…" />
+              <Textarea rows={2} value={t.message} onChange={(e) => patch({ message: e.target.value })} placeholder="Default message" maxLength={1500} />
+            </div>
+          );
+        })}
+      </Card>
+
+      {existing && <VerificationCard profile={existing} onChanged={reload} />}
 
       <div className="flex justify-end">
         <Button type="submit" size="lg" loading={saving}>{isNew ? "Publish profile" : "Save changes"}</Button>
       </div>
     </form>
+  );
+}
+
+function VerificationCard({ profile, onChanged }) {
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const status = profile.verified ? "APPROVED" : profile.verification?.status || "NONE";
+
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      await api.post("/providers/verification", { documentUrl: url });
+      setUrl("");
+      await onChanged();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card className="space-y-4 p-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-slate-900">Verification</h2>
+        <Badge tone={{ APPROVED: "green", PENDING: "amber", REJECTED: "red", NONE: "slate" }[status]}>
+          {{ APPROVED: "✓ Verified", PENDING: "Under review", REJECTED: "Not approved", NONE: "Not verified" }[status]}
+        </Badge>
+      </div>
+      {status === "APPROVED" && <p className="text-sm text-slate-500">Your profile shows the Verified badge.</p>}
+      {status === "PENDING" && <p className="text-sm text-slate-500">An administrator is reviewing your document. You'll be notified.</p>}
+      {(status === "NONE" || status === "REJECTED") && (
+        <>
+          <p className="text-sm text-slate-500">
+            {status === "REJECTED" ? "Your last submission was not approved. " : ""}
+            Upload a business or ID document (a link to the file or image) to earn the Verified badge.
+          </p>
+          <Alert>{error}</Alert>
+          <div className="flex gap-2">
+            <Input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://… link to your document" />
+            <Button type="button" onClick={submit} loading={busy} disabled={!url}>Submit</Button>
+          </div>
+        </>
+      )}
+    </Card>
   );
 }

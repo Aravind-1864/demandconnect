@@ -8,6 +8,15 @@ const money = z.coerce.number().min(0).max(100_000_000);
 const dateField = z.coerce.date({ invalid_type_error: "Invalid date" });
 const idParams = z.object({ id: objectId });
 
+/**
+ * PATCH schemas must not inject defaults: a field the client omitted has to stay
+ * untouched, not be reset. Strips every ZodDefault wrapper from a shape.
+ */
+const withoutDefaults = (shape) =>
+  Object.fromEntries(
+    Object.entries(shape).map(([k, v]) => [k, v instanceof z.ZodDefault ? v.unwrap() : v])
+  );
+
 // ---- Auth -----------------------------------------------------------------
 const register = z.object({
   name: trimmed(80).min(2, "Name must be at least 2 characters"),
@@ -17,6 +26,9 @@ const register = z.object({
     .min(8, "Password must be at least 8 characters")
     .max(72, "Password must be at most 72 characters"),
   role: z.enum(["CUSTOMER", "PROVIDER"]).default("CUSTOMER"),
+  businessName: trimmed(100).optional(),
+  categories: z.array(objectId).optional(),
+  location: trimmed(80).optional(),
 });
 
 const login = z.object({
@@ -36,6 +48,17 @@ const providerProfileFields = {
   coverImage: z.string().trim().url("Cover image must be a URL").or(z.literal("")).default(""),
   portfolio: z.array(z.string().trim().url("Portfolio items must be URLs")).max(20).default([]),
   experienceYears: z.coerce.number().int().min(0).max(60).default(0),
+  proposalTemplates: z
+    .array(
+      z.object({
+        name: trimmed(60).min(1),
+        includedServices: stringList(20, 120),
+        exclusions: stringList(20, 120),
+        message: trimmed(1500).default(""),
+      })
+    )
+    .max(10)
+    .default([]),
   availability: z
     .object({
       workingDays: z.array(z.number().int().min(0).max(6)).max(7),
@@ -45,7 +68,7 @@ const providerProfileFields = {
     .optional(),
 };
 const providerProfileCreate = z.object(providerProfileFields);
-const providerProfileUpdate = z.object(providerProfileFields).partial().strict();
+const providerProfileUpdate = z.object(withoutDefaults(providerProfileFields)).partial().strict();
 
 const providerQuery = z.object({
   q: trimmed(80).optional(),
@@ -55,6 +78,7 @@ const providerQuery = z.object({
   maxPrice: money.optional(),
   minRating: z.coerce.number().min(0).max(5).optional(),
   verified: z.enum(["true", "false"]).optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD").optional(),
   sort: z.enum(["rating", "price_asc", "price_desc", "newest"]).default("rating"),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(12),
@@ -86,7 +110,7 @@ const budgetMessage = { message: "Minimum budget cannot exceed maximum budget", 
 
 const requestCreate = z.object(requestBase).refine(budgetRule, budgetMessage);
 const requestUpdate = z
-  .object(requestBase)
+  .object(withoutDefaults(requestBase))
   .omit({ mode: true, invitedProviders: true })
   .partial()
   .strict()
@@ -117,7 +141,25 @@ const reviewCreate = z.object({
   booking: objectId,
   rating: z.coerce.number().int().min(1).max(5),
   comment: trimmed(1000).default(""),
+  photos: z.array(z.string().trim().url()).max(4).default([]),
 });
+const reviewReply = z.object({ text: trimmed(1000).min(1, "Reply cannot be empty") });
+
+const requestPlan = z.object({
+  checklist: z.array(z.object({ text: trimmed(140).min(1), done: z.boolean().default(false) })).max(50),
+  budgetPlan: z.array(z.object({ label: trimmed(60).min(1), amount: money })).max(20),
+});
+
+const batchQuery = z.object({
+  ids: z
+    .string()
+    .transform((s) => s.split(",").map((x) => x.trim()).filter(Boolean))
+    .pipe(z.array(objectId).min(1).max(6)),
+});
+
+const messageCreate = z.object({ recipient: objectId, text: trimmed(2000).min(1, "Message cannot be empty") });
+const verificationSubmit = z.object({ documentUrl: z.string().trim().url("Provide a valid document URL") });
+const userIdParams = z.object({ userId: objectId });
 
 // ---- AI -------------------------------------------------------------------
 const parseRequirement = z.object({
@@ -151,6 +193,12 @@ module.exports = {
   proposalCreate,
   bookingStatus,
   reviewCreate,
+  reviewReply,
+  requestPlan,
+  batchQuery,
+  messageCreate,
+  verificationSubmit,
+  userIdParams,
   parseRequirement,
   requestRef,
   categoryCreate,

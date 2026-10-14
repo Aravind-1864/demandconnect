@@ -3,6 +3,7 @@ const Review = require("../models/Review");
 const Booking = require("../models/Booking");
 const ProviderProfile = require("../models/ProviderProfile");
 const ApiError = require("../utils/ApiError");
+const { notify } = require("../services/notificationService");
 const { asyncHandler, assertObjectId, ok } = require("../utils/helpers");
 
 /** Recomputes the denormalised rating from the source-of-truth reviews. */
@@ -18,7 +19,7 @@ async function refreshRating(providerProfileId) {
 }
 
 exports.create = asyncHandler(async (req, res) => {
-  const { booking: bookingId, rating, comment } = req.body;
+  const { booking: bookingId, rating, comment, photos } = req.body;
   assertObjectId(bookingId, "Booking");
 
   const booking = await Booking.findById(bookingId);
@@ -35,10 +36,35 @@ exports.create = asyncHandler(async (req, res) => {
     providerProfile: booking.providerProfile,
     rating,
     comment,
+    photos,
   });
   await refreshRating(booking.providerProfile);
+  await notify(booking.provider, {
+    type: "REVIEW",
+    title: "New " + rating + "★ review",
+    body: comment ? comment.slice(0, 120) : "A customer reviewed your work.",
+    link: "/provider/bookings",
+  });
 
   ok(res, review, 201);
 });
 
 exports.refreshRating = refreshRating;
+
+/** PATCH /reviews/:id/reply — the reviewed provider answers once publicly. */
+exports.reply = asyncHandler(async (req, res) => {
+  assertObjectId(req.params.id, "Review");
+  const review = await Review.findOne({ _id: req.params.id, provider: req.user._id });
+  if (!review) throw ApiError.notFound("Review not found");
+  if (review.reply?.text) throw ApiError.conflict("You have already replied to this review");
+
+  review.reply = { text: req.body.text, createdAt: new Date() };
+  await review.save();
+  await notify(review.customer, {
+    type: "REVIEW_REPLY",
+    title: "The provider replied to your review",
+    body: req.body.text.slice(0, 120),
+    link: "/customer/bookings",
+  });
+  ok(res, review);
+});

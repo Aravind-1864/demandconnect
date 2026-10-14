@@ -5,6 +5,7 @@ const ServiceRequest = require("../models/ServiceRequest");
 const Proposal = require("../models/Proposal");
 const Booking = require("../models/Booking");
 const ApiError = require("../utils/ApiError");
+const { notify } = require("../services/notificationService");
 const { asyncHandler, assertObjectId, ok } = require("../utils/helpers");
 
 const slugify = (s) =>
@@ -48,8 +49,24 @@ exports.listProviders = asyncHandler(async (_req, res) => {
 
 exports.setProviderVerified = asyncHandler(async (req, res) => {
   assertObjectId(req.params.id, "Provider");
-  const profile = await ProviderProfile.findByIdAndUpdate(req.params.id, { verified: req.body.verified }, { returnDocument: "after" });
+  const profile = await ProviderProfile.findById(req.params.id);
   if (!profile) throw ApiError.notFound("Provider not found");
+
+  const wasPending = profile.verification?.status === "PENDING";
+  profile.verified = req.body.verified;
+  if (req.body.verified) profile.verification.status = "APPROVED";
+  else if (wasPending) profile.verification.status = "REJECTED";
+  else profile.verification.status = "NONE";
+  await profile.save();
+
+  await notify(profile.user, {
+    type: "VERIFICATION",
+    title: req.body.verified ? "You are now verified ✓" : wasPending ? "Verification not approved" : "Verification removed",
+    body: req.body.verified
+      ? "Your profile now shows the Verified badge."
+      : "Please review your documents and submit again.",
+    link: "/provider/profile",
+  });
   ok(res, profile);
 });
 
@@ -68,4 +85,44 @@ exports.updateCategory = asyncHandler(async (req, res) => {
   const category = await Category.findByIdAndUpdate(req.params.id, update, { returnDocument: "after", runValidators: true });
   if (!category) throw ApiError.notFound("Category not found");
   ok(res, category);
+});
+
+exports.analytics = asyncHandler(async (_req, res) => {
+  const since = new Date();
+  since.setUTCDate(since.getUTCDate() - 13);
+  since.setUTCHours(0, 0, 0, 0);
+
+  const [daily, byCategory, top] = await Promise.all([
+    ServiceRequest.aggregate([
+      { $match: { createdAt: { $gte: since } } },
+      { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 } } },
+    ]),
+    ServiceRequest.aggregate([
+      { $unwind: "$services" },
+      { $group: { _id: "$services.category", count: { $sum: 1 } } },
+      { $lookup: { from: Category.collection.name, localField: "_id", foreignField: "_id", as: "c" } },
+      { $unwind: "$c" },
+      { $project: { _id: 0, name: "$c.name", count: 1 } },
+      { $sort: { count: -1 } },
+    ]),
+    Booking.aggregate([
+      { $match: { status: "COMPLETED" } },
+      { $group: { _id: "$providerProfile", jobs: { $sum: 1 }, value: { $sum: "$agreedPrice" } } },
+      { $sort: { value: -1 } },
+      { $limit: 5 },
+      { $lookup: { from: ProviderProfile.collection.name, localField: "_id", foreignField: "_id", as: "p" } },
+      { $unwind: "$p" },
+      { $project: { _id: 1, jobs: 1, value: 1, businessName: "$p.businessName", ratingAverage: "$p.ratingAverage" } },
+    ]),
+  ]);
+
+  const byDay = new Map(daily.map((d) => [d._id, d.count]));
+  const days = [];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(since);
+    d.setUTCDate(since.getUTCDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    days.push({ date: key, count: byDay.get(key) || 0 });
+  }
+  ok(res, { requestsByDay: days, byCategory, topProviders: top });
 });
