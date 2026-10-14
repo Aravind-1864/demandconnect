@@ -139,10 +139,7 @@ function ReelPanel() {
     let raf = 0;
     let last = performance.now();
     const ease = (t) => t * t * t * (t * (t * 6 - 15) + 10); // smootherstep
-    if (isSmallScreen()) {
-      panel.current?.style.setProperty("--p", "1");
-      return;
-    }
+    const small = isSmallScreen(); // phones: grow in place, no sideways travel (it overflowed)
 
     const tick = (now = performance.now()) => {
       const dt = Math.min(0.05, (now - last) / 1000); // frame-rate independent damping
@@ -152,14 +149,19 @@ function ReelPanel() {
       if (sec && el) {
         const r = sec.getBoundingClientRect();
         const vh = window.innerHeight || 800;
-        const target = Math.min(1, Math.max(0, (vh * 1.0 - r.top) / (vh * 0.9)));
+        const target = Math.min(1, Math.max(0, (vh * 1.0 - r.top) / (vh * (small ? 0.6 : 0.9))));
         cur += (target - cur) * (1 - Math.exp(-dt / 0.28)); // critically damped glide
         if (Math.abs(target - cur) < 0.0005) cur = target;
         const e = ease(cur);
-        const x = (1 - e) * 58; // % of own width, from the right edge towards centre
-        const sc = 0.34 + 0.66 * e;
         el.style.setProperty("--p", cur.toFixed(4));
-        el.style.transform = `translate3d(${x}%, ${(1 - e) * 12}%, 0) scale(${sc}) rotate(${(1 - e) * -5}deg) skewY(var(--sk, 0deg))`;
+        if (small) {
+          el.style.transform = `translate3d(0, ${(1 - e) * 8}%, 0) scale(${0.82 + 0.18 * e})`;
+          el.style.opacity = String(0.4 + 0.6 * e);
+        } else {
+          const x = (1 - e) * 58; // % of own width, from the right edge towards centre
+          const sc = 0.34 + 0.66 * e;
+          el.style.transform = `translate3d(${x}%, ${(1 - e) * 12}%, 0) scale(${sc}) rotate(${(1 - e) * -5}deg) skewY(var(--sk, 0deg))`;
+        }
       }
       raf = requestAnimationFrame(tick);
     };
